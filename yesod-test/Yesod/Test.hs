@@ -341,14 +341,17 @@ data RequestBuilderData site = RequestBuilderData
     , rbdGets :: H.Query
     , rbdHeaders :: H.RequestHeaders
     }
+  deriving Show
 
 data RBDPostData = MultipleItemsPostData [RequestPart]
                  | BinaryPostData BSL8.ByteString
+  deriving Show
 
 -- | Request parts let us discern regular key/values from files sent in the request.
 data RequestPart
   = ReqKvPart T.Text T.Text
   | ReqFilePart T.Text FilePath BSL8.ByteString T.Text
+  deriving Show
 
 -- | The 'RequestBuilder' state monad constructs a URL encoded string of arguments
 -- to send with your requests. Some of the functions that run on it use the current
@@ -1523,7 +1526,7 @@ request :: HasCallStack
 request reqBuilder = do
     YesodExampleData app site oldCookies mRes <- getSIO
 
-    RequestBuilderData {..} <- liftIO $ execSIO reqBuilder RequestBuilderData
+    rbd@RequestBuilderData {..} <- liftIO $ execSIO reqBuilder RequestBuilderData
       { rbdPostData = MultipleItemsPostData []
       , rbdResponse = mRes
       , rbdMethod = "GET"
@@ -1535,6 +1538,9 @@ request reqBuilder = do
     let path
             | null rbdPath = "/"
             | otherwise = TE.decodeUtf8 $ Builder.toByteString $ H.encodePathSegments rbdPath
+    liftIO $ print ("rbdHeaders", rbdHeaders)
+    liftIO $ print ("rbdPostData", rbdPostData)
+    liftIO $ print ("rbdgets", rbdGets)
 
     -- expire cookies and filter them for the current path. TODO: support max age
     currentUtc <- liftIO getCurrentTime
