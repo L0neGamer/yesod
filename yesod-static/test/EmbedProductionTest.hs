@@ -25,6 +25,7 @@ data MyApp = MyApp { getStatic :: EmbeddedStatic }
 
 mkYesod "MyApp" [parseRoutes|
 / HomeR GET
+/typedContent TypedContentR GET
 /static StaticR EmbeddedStatic getStatic
 |]
 
@@ -32,6 +33,14 @@ getHomeR :: Handler Html
 getHomeR = defaultLayout $ do
     toWidget [julius|console.log("Hello World");|]
     [whamlet|<h1>Hello|]
+
+getTypedContentR :: Handler TypedContent
+getTypedContentR = do
+    getRequest >>= liftIO . print . reqAccept
+    
+    selectRep $ do
+        provideRep $ pure ("html content" :: Html)
+        provideRep $ pure ("text content" :: TL.Text)
 
 instance Yesod MyApp where
      addStaticContent = embedStaticContent getStatic StaticR Right
@@ -51,6 +60,22 @@ hasCacheControl = withResponse $ \r -> do
 
 embedProductionSpecs :: Spec
 embedProductionSpecs = yesodSpec (MyApp eProduction) $ do
+    ydescribe "temp tests" $ do
+        yit "html content" $ do
+            request $ do
+                setMethod "GET"
+                setUrl $ TypedContentR
+                addRequestHeader ("Content-Type", "text/html")
+                addRequestHeader ("Accept", "text/html")
+            bodyEquals "html content"
+        yit "text content" $ do
+            request $ do
+                setMethod "GET"
+                setUrl $ TypedContentR
+                addRequestHeader ("Content-Type", "text/plain")
+                addRequestHeader ("Accept", "text/plain")
+            bodyEquals "text content"
+
     ydescribe "Embedded Production Entries" $ do
         yit "e1 loads" $ do
             get $ StaticR e1
